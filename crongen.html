@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crontab Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #333;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        select {
+            width: 100px;
+            height: 150px;
+            margin-top: 5px;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        #copyButton {
+            margin-top: 10px;
+            padding: 5px 10px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        #copyButton:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Crontab Expression Generator</h1>
+    <div style="display: flex; align-items: flex-start;">
+        <div style="margin-right: 20px;">
+            <label for="hour">Hour:</label>
+            <select id="hour" multiple>
+                <!-- Generate options for hours 0-23 -->
+                <script>
+                    for (let i = 0; i < 24; i++) {
+                        document.write(`<option value="${i}" selected>${i}</option>`);
+                    }
+                </script>
+            </select>
+        </div>
+        <div>
+            <label for="minute">Minute:</label>
+            <select id="minute" multiple>
+                <!-- Generate options for minutes 0-59 -->
+                <script>
+                    for (let i = 0; i < 60; i++) {
+                        document.write(`<option value="${i}" selected>${i}</option>`);
+                    }
+                </script>
+            </select>
+        </div>
+    </div>
+    <div id="result">Crontab Expression: <span id="expression">* * * * *</span>
+        <button id="copyButton">Copy</button>
+    </div>
+
+    <script>
+        const hourSelect = document.getElementById('hour');
+        const minuteSelect = document.getElementById('minute');
+        const expressionSpan = document.getElementById('expression');
+        const copyButton = document.getElementById('copyButton');
+
+        function getSelectedValues(select) {
+            const selectedOptions = Array.from(select.selectedOptions);
+            if (selectedOptions.length === 0) {
+            return '*';
+            }
+            if (selectedOptions.length === select.options.length) {
+            return '*';
+            }
+            const values = selectedOptions.map(option => parseInt(option.value));
+            values.sort((a, b) => a - b);
+
+            let ranges = [];
+            let start = values[0];
+            let end = values[0];
+
+            for (let i = 1; i < values.length; i++) {
+            if (values[i] === end + 1) {
+                end = values[i];
+            } else {
+                ranges.push(start === end ? `${start}` : `${start}-${end}`);
+                start = values[i];
+                end = values[i];
+            }
+            }
+            ranges.push(start === end ? `${start}` : `${start}-${end}`);
+
+            return ranges.join(',');
+        }
+
+        function isRange(values) {
+            for (let i = 1; i < values.length; i++) {
+                if (parseInt(values[i]) !== parseInt(values[i - 1]) + 1) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function updateExpression() {
+            const hours = getSelectedValues(hourSelect) || '*';
+            const minutes = getSelectedValues(minuteSelect) || '*';
+            expressionSpan.textContent = `${minutes} ${hours} * * *`;
+        }
+
+        function copyToClipboard() {
+            const expression = expressionSpan.textContent;
+            navigator.clipboard.writeText(expression).then(() => {
+                alert('Crontab expression copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+            });
+        }
+
+        hourSelect.addEventListener('change', updateExpression);
+        minuteSelect.addEventListener('change', updateExpression);
+        copyButton.addEventListener('click', copyToClipboard);
+    </script>
+</body>
+</html>
