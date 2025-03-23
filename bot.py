@@ -13,6 +13,7 @@ TIMEZONE = pytz.timezone(os.getenv('TIMEZONE', 'Asia/Colombo'))
 bot = TelegramClient('bot', os.environ['API_ID'], os.environ['API_HASH']).start(bot_token=os.environ['BOT_TOKEN'])
 fb_auto = fbAuto()
 database = DB()
+USER_LIST = [] if os.getenv('USER_LIST') is None else os.environ['USER_LIST'].split(',')
 
 async def wait_until_next_minute():
     now = datetime.now(TIMEZONE)
@@ -34,6 +35,8 @@ async def execute_job(job):
 
 @bot.on(events.NewMessage(func=lambda e: e.is_private))
 async def handler(event):
+    if len(USER_LIST)>0 and str(event.sender_id) not in USER_LIST:
+        return
     user = database.get_user(event.chat_id)
     if user is None:
         sender = await event.get_sender()
