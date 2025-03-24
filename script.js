@@ -1,10 +1,16 @@
 window.clickShareBtn = function(){
     var clicked = false;
-    Array.from(document.getElementsByTagName('span')).forEach(function (item){
-        if(item.getAttribute('data-ad-rendering-role')=='share_button'){
-            item.click();
-            clicked = true;
+    Array.from(document.getElementsByTagName('div')).filter(function (item){
+        if(item.getAttribute('role')=='dialog'){
+            return true;
         }
+    }).forEach(function (item){
+        Array.from(item.getElementsByTagName('span')).filter(function (item){
+            if(item.getAttribute('data-ad-rendering-role')=='share_button'){
+                item.click();
+                clicked = true;
+            }
+        })
     })
     return clicked;
 }
