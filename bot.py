@@ -23,9 +23,9 @@ async def wait_until_next_minute():
 async def cron():
     while True:
         await wait_until_next_minute()
-        print('executing cron')
+        print('executing cron', datetime.now(TIMEZONE).strftime('%H:%M'))
         for job in database.get_jobs_for_current_minute():
-            print(job, datetime.now(TIMEZONE))
+            print(job)
             await execute_job(job)
 async def execute_job(job):
     if not fb_auto.logged_in:
@@ -45,6 +45,8 @@ async def handler(event):
     next = user.get('next')
     if event.message.text in direct_reply:
         text = direct_reply[event.message.text]
+    elif event.message.text == '/time':
+        text = datetime.now(TIMEZONE).strftime('Server Time: `%Y-%m-%d %H:%M:%S`')
     elif event.message.text == '/cancel':
         user = {'first_name': user['first_name'], 'last_name': user['last_name']}
         text = strings['cancelled']
