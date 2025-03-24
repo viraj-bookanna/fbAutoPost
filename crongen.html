@@ -42,6 +42,21 @@
         #copyButton:hover {
             background-color: #0056b3;
         }
+        .button-group {
+            margin-top: 10px;
+        }
+        .button-group button {
+            margin-right: 5px;
+            padding: 5px 10px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .button-group button:hover {
+            background-color: #0056b3;
+        }
     </style>
 </head>
 <body>
@@ -57,6 +72,11 @@
                     }
                 </script>
             </select>
+            <div class="button-group">
+                <button onclick="selectAll('hour')">Select All</button>
+                <button onclick="deselectAll('hour')">Deselect All</button>
+                <button onclick="selectInverse('hour')">Select Inverse</button>
+            </div>
         </div>
         <div>
             <label for="minute">Minute:</label>
@@ -68,6 +88,11 @@
                     }
                 </script>
             </select>
+            <div class="button-group">
+                <button onclick="selectAll('minute')">Select All</button>
+                <button onclick="deselectAll('minute')">Deselect All</button>
+                <button onclick="selectInverse('minute')">Select Inverse</button>
+            </div>
         </div>
     </div>
     <div id="result">Crontab Expression: <span id="expression">* * * * *</span>
@@ -83,10 +108,10 @@
         function getSelectedValues(select) {
             const selectedOptions = Array.from(select.selectedOptions);
             if (selectedOptions.length === 0) {
-            return '*';
+                return '*';
             }
             if (selectedOptions.length === select.options.length) {
-            return '*';
+                return '*';
             }
             const values = selectedOptions.map(option => parseInt(option.value));
             values.sort((a, b) => a - b);
@@ -96,26 +121,17 @@
             let end = values[0];
 
             for (let i = 1; i < values.length; i++) {
-            if (values[i] === end + 1) {
-                end = values[i];
-            } else {
-                ranges.push(start === end ? `${start}` : `${start}-${end}`);
-                start = values[i];
-                end = values[i];
-            }
+                if (values[i] === end + 1) {
+                    end = values[i];
+                } else {
+                    ranges.push(start === end ? `${start}` : `${start}-${end}`);
+                    start = values[i];
+                    end = values[i];
+                }
             }
             ranges.push(start === end ? `${start}` : `${start}-${end}`);
 
             return ranges.join(',');
-        }
-
-        function isRange(values) {
-            for (let i = 1; i < values.length; i++) {
-                if (parseInt(values[i]) !== parseInt(values[i - 1]) + 1) {
-                    return false;
-                }
-            }
-            return true;
         }
 
         function updateExpression() {
@@ -131,6 +147,30 @@
             }).catch(err => {
                 console.error('Failed to copy text: ', err);
             });
+        }
+
+        function selectAll(id) {
+            const select = document.getElementById(id);
+            for (let i = 0; i < select.options.length; i++) {
+                select.options[i].selected = true;
+            }
+            updateExpression();
+        }
+
+        function deselectAll(id) {
+            const select = document.getElementById(id);
+            for (let i = 0; i < select.options.length; i++) {
+                select.options[i].selected = false;
+            }
+            updateExpression();
+        }
+
+        function selectInverse(id) {
+            const select = document.getElementById(id);
+            for (let i = 0; i < select.options.length; i++) {
+                select.options[i].selected = !select.options[i].selected;
+            }
+            updateExpression();
         }
 
         hourSelect.addEventListener('change', updateExpression);
