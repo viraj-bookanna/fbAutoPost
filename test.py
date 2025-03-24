@@ -1,6 +1,8 @@
 import pickle, time, os
 from selenium import webdriver
+from dotenv import load_dotenv
 
+load_dotenv(override=True)
 options = webdriver.ChromeOptions()
 driver = webdriver.Chrome(options=options)
 with open(os.environ['COOKIES_FILE'], "rb") as f:
