@@ -1,22 +1,25 @@
-window.clickShareBtn = function(){
-    var clicked = false;
-    Array.from(document.getElementsByTagName('div')).filter(function (item){
+window.getDialogs = function(){
+    return Array.from(document.getElementsByTagName('div')).filter(function (item){
         if(item.getAttribute('role')=='dialog'){
             return true;
         }
-    }).forEach(function (item){
-        Array.from(item.getElementsByTagName('span')).filter(function (item){
-            if(item.getAttribute('data-ad-rendering-role')=='share_button'){
-                item.click();
-                clicked = true;
-            }
-        })
+    });
+}
+window.clickShareBtn = function(){
+    var clicked = false;
+    var dialogs = window.getDialogs();
+    Array.from(dialogs[dialogs.length-1].getElementsByTagName('span')).filter(function (item){
+        if(item.getAttribute('data-ad-rendering-role')=='share_button'){
+            item.click();
+            clicked = true;
+        }
     })
     return clicked;
 }
 window.clickGroupBtn = function(){
     var clicked = false;
-    Array.from(document.getElementsByTagName('span')).forEach(function (item){
+    var dialogs = window.getDialogs();
+    Array.from(dialogs[dialogs.length-1].getElementsByTagName('span')).filter(function (item){
         if(item.innerHTML=='Group'){
             item.click();
             clicked = true;
@@ -26,7 +29,8 @@ window.clickGroupBtn = function(){
 }
 window.focusSearch = function(){
     var clicked = false;
-    Array.from(document.getElementsByTagName('input')).forEach(function (item){
+    var dialogs = window.getDialogs();
+    Array.from(dialogs[dialogs.length-1].getElementsByTagName('input')).filter(function (item){
         if(item.getAttribute('placeholder')=='Search for groups'){
             item.focus();
             clicked = true;
@@ -35,7 +39,8 @@ window.focusSearch = function(){
     return clicked;
 }
 window.selectGroup = function(link){
-    var groups = Array.from(document.getElementsByTagName('div')).filter(function (item){
+    var dialogs = window.getDialogs();
+    var groups = Array.from(dialogs[dialogs.length-1].getElementsByTagName('div')).filter(function (item){
         if(item.getAttribute('role')=='listitem' && item.getAttribute('data-visualcompletion')=='ignore-dynamic'){
             return true;
         }
@@ -51,7 +56,7 @@ window.selectGroup = function(link){
 }
 window.clickPostBtn = function(){
     var clicked = false;
-    Array.from(document.getElementsByTagName('span')).forEach(function (item){
+    Array.from(document.getElementsByTagName('span')).filter(function (item){
         if(item.innerHTML=='Post'){
             item.click();
             clicked = true;
@@ -59,4 +64,3 @@ window.clickPostBtn = function(){
     })
     return clicked;
 }
-
