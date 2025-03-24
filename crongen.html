@@ -97,7 +97,7 @@
     </div>
     <br>
     <label for="expression">Crontab Expression:</label>
-    <div id="result"><code id="expression">* * * * *</code></div>
+    <div id="result"><span id="expression">* * * * *</span></div>
     <button id="copyButton">Copy</button>
 
     <script>
@@ -116,6 +116,18 @@
             }
             const values = selectedOptions.map(option => parseInt(option.value));
             values.sort((a, b) => a - b);
+
+            // Check for patterns like */15
+            const step = values[1] - values[0];
+            if (values.length > 1 && values.every((value, index) => value === values[0] + index * step)) {
+                if(values.length * step === 60){
+                    return `*/${step}`;
+                }
+                else if(values.length * step === 24){
+                    return `*/${step}`;
+                }
+                return values.join(',');
+            }
 
             let ranges = [];
             let start = values[0];
@@ -141,13 +153,14 @@
             expressionSpan.textContent = `${minutes} ${hours} * * *`;
         }
 
-        function copyToClipboard() {
-            const expression = expressionSpan.textContent;
-            navigator.clipboard.writeText(expression).then(() => {
-                console.log('Crontab expression copied to clipboard!');
-            }).catch(err => {
-                console.error('Failed to copy text: ', err);
-            });
+        async function copy_paste(target){
+            var text = (target.value=="") ? target.innerHTML : target.value;
+            await navigator.clipboard.writeText(text);
+        }
+
+        function copy(dest_id){
+            var element = document.getElementById(dest_id);
+            Promise.resolve(copy_paste(element));
         }
 
         function selectAll(id) {
@@ -176,7 +189,7 @@
 
         hourSelect.addEventListener('change', updateExpression);
         minuteSelect.addEventListener('change', updateExpression);
-        copyButton.addEventListener('click', copyToClipboard);
+        copyButton.addEventListener('click', copy('expression'));
     </script>
 </body>
 </html>
