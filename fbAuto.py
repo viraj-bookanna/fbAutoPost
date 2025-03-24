@@ -54,7 +54,7 @@ class fbAuto:
         await self.functionWaiter('clickShareBtn')
         await self.functionWaiter('clickGroupBtn')
         await self.functionWaiter('focusSearch')
-        await self.typeText(self, self.driver.switch_to.active_element, group['name'])
+        await self.typeText(self.driver.switch_to.active_element, group['name'])
         await asyncio.sleep(2)
         if await self.functionWaiter('selectGroup', f"'{group['link']}'"):
             await asyncio.sleep(2)
