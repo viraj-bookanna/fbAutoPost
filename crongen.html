@@ -95,9 +95,10 @@
             </div>
         </div>
     </div>
-    <div id="result">Crontab Expression: <span id="expression">* * * * *</span>
-        <button id="copyButton">Copy</button>
-    </div>
+    <br>
+    <label for="expression">Crontab Expression:</label>
+    <div id="result"><code id="expression">* * * * *</code></div>
+    <button id="copyButton">Copy</button>
 
     <script>
         const hourSelect = document.getElementById('hour');
@@ -143,7 +144,7 @@
         function copyToClipboard() {
             const expression = expressionSpan.textContent;
             navigator.clipboard.writeText(expression).then(() => {
-                alert('Crontab expression copied to clipboard!');
+                console.log('Crontab expression copied to clipboard!');
             }).catch(err => {
                 console.error('Failed to copy text: ', err);
             });
