@@ -9,9 +9,11 @@ class DB:
         cursor = self.conn.cursor()
         cursor.execute('''CREATE TABLE IF NOT EXISTS jobs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            post_link TEXT,
-            group_list TEXT,
-            share_text TEXT
+            post_link TEXT NOT NULL,
+            group_list TEXT NOT NULL,
+            share_text TEXT,
+            cron_active BOOLEAN DEFAULT 0,
+            cron_expression TEXT
         )''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS cron (
             id INTEGER,
@@ -32,22 +34,48 @@ class DB:
         cursor.close()
         self.conn.commit()
         return job_id
+    def get_active_jobs(self):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT id FROM jobs WHERE cron_active = 1")
+        job = cursor.fetchone()
+        while job:
+            yield {'id': job[0]}
+            job = cursor.fetchone()
+        cursor.close()
+    def get_job(self, job_id):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM jobs WHERE cron_active = 1 AND id = ?", (job_id,))
+        job = cursor.fetchone()
+        cursor.close()
+        if not job:
+            return None
+        return {
+            'id': job[0],
+            'post_link': job[1],
+            'group_list': json.loads(job[2]),
+            'share_text': job[3],
+            'cron_expression': job[5]
+        }
+    def edit_job(self, job_id, field, value):
+        cursor = self.conn.cursor()
+        cursor.execute(f"UPDATE jobs SET {field} = ? WHERE id = ?", (value, job_id))
+        updated = cursor.rowcount > 0
+        cursor.close()
+        return updated
     def delete_cron(self, job_id):
-        deleted = False
         cursor = self.conn.cursor()
         cursor.execute("DELETE FROM cron WHERE id = ?", (job_id,))
-        if cursor.rowcount > 0:
-            deleted = True
+        deleted = cursor.rowcount > 0
+        if deleted:
+            cursor.execute("UPDATE jobs SET cron_active = 0, cron_expression = NULL WHERE id = ?", (job_id,))
         cursor.close()
         self.conn.commit()
         return deleted
     def delete_job(self, job_id):
-        deleted = False
         self.delete_cron(job_id)
         cursor = self.conn.cursor()
         cursor.execute("DELETE FROM jobs WHERE id = ?", (job_id,))
-        if cursor.rowcount > 0:
-            deleted = True
+        deleted = cursor.rowcount > 0
         cursor.close()
         self.conn.commit()
         return deleted
@@ -71,6 +99,7 @@ class DB:
         if not cursor.fetchone():
             return False
         self.delete_cron(job_id)
+        cursor.execute("UPDATE jobs SET cron_active = 1, cron_expression = ? WHERE id = ?", (crontab_expression, job_id))
         for execution_time in self.get_all_mins(crontab_expression):
             cursor.execute("INSERT INTO cron (id, execution_time) VALUES (?, ?)", (job_id, execution_time))
         cursor.close()
@@ -80,13 +109,13 @@ class DB:
         now = datetime.now(self.timezone)
         minutes_passed = now.minute + now.hour * 60
         cursor = self.conn.cursor()
-        cursor.execute("SELECT * FROM cron JOIN jobs ON cron.id = jobs.id WHERE execution_time = ?", (minutes_passed,))
+        cursor.execute("SELECT jobs.post_link,jobs.group_list,jobs.share_text FROM cron JOIN jobs ON cron.id = jobs.id WHERE execution_time = ?", (minutes_passed,))
         job = cursor.fetchone()
         while job:
             yield {
-                'post_link': job[3],
-                'group_list': json.loads(job[4]),
-                'share_text': job[5]
+                'post_link': job[0],
+                'group_list': json.loads(job[1]),
+                'share_text': job[2]
             }
             job = cursor.fetchone()
         cursor.close()
