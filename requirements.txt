@@ -3,3 +3,4 @@ pytz
 selenium
 python-dotenv
 croniter
+pyperclip
