@@ -40,14 +40,16 @@ window.focusSearch = function(){
 }
 window.selectGroup = function(link){
     var dialogs = window.getDialogs();
-    var groups = Array.from(dialogs[dialogs.length-1].getElementsByTagName('div')).filter(function (item){
-        if(item.getAttribute('role')=='listitem' && item.getAttribute('data-visualcompletion')=='ignore-dynamic'){
-            return true;
-        }
-    });
+    var groups = dialogs.map(function (item){
+        return Array.from(item.getElementsByTagName('div')).filter(function (item){
+            if(item.getAttribute('role')=='listitem' && item.getAttribute('data-visualcompletion')=='ignore-dynamic'){
+                return true;
+            }
+        });
+    }).filter(function (item){return item.length>0});
     try{
-        if(groups[0].getElementsByTagName('a')[0].href.split('?')[0]==link){
-            groups[0].getElementsByTagName('div')[0].click();
+        if(groups[0][0].getElementsByTagName('a')[0].href.split('?')[0].split('/')[4]==link.split('/')[4]){
+            groups[0][0].getElementsByTagName('div')[0].click();
             return true;
         }
     }
