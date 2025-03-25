@@ -1,6 +1,6 @@
 import os,logging,asyncio,pytz,json
 from telethon import TelegramClient, events
-from fbAuto import fbAuto
+from fbAuto import fbAutoFirefox
 from dotenv import load_dotenv
 from datetime import datetime
 from strings import direct_reply, strings
@@ -11,7 +11,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 TIMEZONE = pytz.timezone(os.getenv('TIMEZONE', 'Asia/Colombo'))
 bot = TelegramClient('bot', os.environ['API_ID'], os.environ['API_HASH']).start(bot_token=os.environ['BOT_TOKEN'])
-fb_auto = fbAuto()
+fb_auto = fbAutoFirefox()
 database = DB()
 USER_LIST = [] if os.getenv('USER_LIST') is None else os.environ['USER_LIST'].split(',')
 
