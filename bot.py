@@ -1,5 +1,5 @@
 import os,logging,asyncio,pytz,json
-from telethon import TelegramClient, events
+from telethon import TelegramClient, events, Button
 from fbAuto import fbAutoFirefox
 from dotenv import load_dotenv
 from datetime import datetime
@@ -32,6 +32,11 @@ async def execute_job(job):
         await fb_auto.login(os.environ['COOKIES_FILE'])
     for group in job['group_list']:
         await fb_auto.sharePost(job['post_link'], group, job['share_text'])
+def yesno(x,page,job_id):
+    return [
+        [Button.inline("Yes", '{{"page":"{}","press":"yes{}","id":{}}}'.format(page,x,job_id))],
+        [Button.inline("No", '{{"page":"{}","press":"no{}","id":{}}}'.format(page,x,job_id))]
+    ]
 
 @bot.on(events.NewMessage(func=lambda e: e.is_private))
 async def handler(event):
@@ -43,6 +48,7 @@ async def handler(event):
         user = {'first_name': sender.first_name, 'last_name': sender.last_name}
         database.set_user(event.chat_id, user)
     next = user.get('next')
+    keyboard = []
     if event.message.text in direct_reply:
         text = direct_reply[event.message.text]
     elif event.message.text == '/time':
@@ -60,17 +66,14 @@ async def handler(event):
             text = strings['cron_invalid']
             if database.add_cron(cron[1], cron[2]):
                 text = strings['cron_added']
-    elif event.message.text.startswith('/del'):
-        job_id = event.message.text.split(' ', 2)
-        text = strings['delete_help']
-        if len(job_id) == 3 and job_id[1].upper() == 'JOB':
-            text = strings['job_invalid']
-            if database.delete_job(job_id[2]):
-                text = strings['job_deleted']
-        elif len(job_id) == 3 and job_id[1].upper() == 'CRON':
-            text = strings['cron_id_invalid']
-            if database.delete_cron(job_id[2]):
-                text = strings['cron_deleted']
+    elif event.message.text.startswith('/jobs'):
+        text = strings['active_jobs']
+        keyboard = [
+            [Button.inline(f"Job: {job['id']}", json.dumps({'page': 'job', 'press': 'job', 'id': job['id']}))]
+            for job in database.get_active_jobs()
+        ]
+        if keyboard == []:
+            text = strings['no_jobs']
     elif next == 'post_link':
         user['new'] = {'post_link': event.message.text}
         user['next'] = 'group_list'
@@ -84,22 +87,104 @@ async def handler(event):
             os.remove(file)
         try:
             group_list = json.loads(group_list)
-            user['new']['group_list'] = json.dumps(group_list)
-            text = strings['ask_share_text']
-            user['next'] = 'share_text'
+            if 'edit' in user and user['edit']['target'] == 'group_list':
+                text = strings['job_invalid']
+                if database.edit_job(user['edit']['id'], 'group_list', json.dumps(group_list)):
+                    text = strings['edit_success']
+                    keyboard = [
+                        [Button.inline(strings['back'], json.dumps({'page': 'job', 'press': 'job', 'id': user['edit']['id']}))]
+                    ]
+                    del user['edit']
+                    del user['next']
+            else:
+                user['new']['group_list'] = json.dumps(group_list)
+                text = strings['ask_share_text']
+                user['next'] = 'share_text'
         except json.JSONDecodeError:
             text = strings['invalid_group_list']
     elif next == 'share_text':
-        user['new']['share_text'] = event.message.text
-        job_id = database.add_job(user['new'])
-        del user['new']
-        del user['next']
-        text = f'Job added\nJob ID: `{job_id}`'
+        if 'edit' in user and user['edit']['target'] == 'share_text':
+            text = strings['job_invalid']
+            if database.edit_job(user['edit']['id'], 'share_text', event.message.text):
+                text = strings['edit_success']
+                keyboard = [
+                    [Button.inline(strings['back'], json.dumps({'page': 'job', 'press': 'job', 'id': user['edit']['id']}))]
+                ]
+                del user['edit']
+                del user['next']
+        else:
+            user['new']['share_text'] = event.message.text
+            job_id = database.add_job(user['new'])
+            del user['new']
+            del user['next']
+            text = f'Job added\nJob ID: `{job_id}`'
     else:
         text = strings['unknown_command']
     database.set_user(event.chat_id, user)
-    await event.respond(text)
-    
+    await event.respond(text, buttons=None if keyboard==[] else keyboard, link_preview=False)
+
+@bot.on(events.CallbackQuery())
+async def handler(event):
+    if len(USER_LIST)>0 and str(event.sender_id) not in USER_LIST:
+        return
+    try:
+        data = json.loads(event.data.decode())
+    except json.JSONDecodeError:
+        return
+    user = database.get_user(event.chat_id)
+    if user is None:
+        sender = await event.get_sender()
+        user = {'first_name': sender.first_name, 'last_name': sender.last_name}
+        database.set_user(event.chat_id, user)
+    keyboard = []
+    if data['page'] == 'job':
+        job = database.get_job(data['id'])
+        if job is None:
+            await event.answer(strings['job_invalid'])
+            return
+        if data['press'] == 'job' or data['press'].startswith(('nodel_cron','nodel_job')):
+            text = f"Job ID: {job['id']}\nPost Link: {job['post_link']}\nCron Expression: `{job['cron_expression']}`"
+            keyboard = [
+                [Button.inline(strings['group_list'], json.dumps({'page': data['page'], 'press': 'group_list', 'id': job['id']}))],
+                [Button.inline(strings['share_text'], json.dumps({'page': data['page'], 'press': 'share_text', 'id': job['id']}))],
+                [Button.inline(strings['delbtn_cron'], json.dumps({'page': data['page'], 'press': 'del_cron', 'id': job['id']}))],
+                [Button.inline(strings['delbtn_job'], json.dumps({'page': data['page'], 'press': 'del_job', 'id': job['id']}))],
+            ]
+        elif data['press'] == 'group_list':
+            text = f"Group List: ```{json.dumps(job['group_list'], indent=4, ensure_ascii=False)}```"
+            keyboard = [
+                [Button.inline(strings['edit'], json.dumps({'page': data['page'], 'press': 'edit_list', 'id': job['id']}))],
+                [Button.inline(strings['back'], json.dumps({'page': data['page'], 'press': 'job', 'id': job['id']}))],
+            ]
+        elif data['press'] == 'share_text':
+            text = job['share_text']
+            keyboard = [
+                [Button.inline(strings['edit'], json.dumps({'page': data['page'], 'press': 'edit_text', 'id': job['id']}))],
+                [Button.inline(strings['back'], json.dumps({'page': data['page'], 'press': 'job', 'id': job['id']}))],
+            ]
+        elif data['press'] == 'del_cron':
+            text = strings['confirm']
+            keyboard = yesno(f"del_cron",'job', job['id'])
+        elif data['press'] == 'del_job':
+            text = strings['confirm']
+            keyboard = yesno(f"del_job",'job', job['id'])
+        elif data['press'] == 'edit_list':
+            user['next'] = 'group_list'
+            user['edit'] = {'target': 'group_list', 'id': job['id']}
+            text = strings['ask_group_list']
+        elif data['press'] == 'edit_text':
+            user['next'] = 'share_text'
+            user['edit'] = {'target': 'share_text', 'id': job['id']}
+            text = strings['ask_share_text']
+        elif data['press'].startswith(('yesdel_cron','yesdel_job')):
+            delinfo = data['press'].split('_')
+            if delinfo[1]=='cron' and database.delete_cron(job['id']):
+                text = strings['del_cron']
+            elif delinfo[1]=='job' and database.delete_job(job['id']):
+                text = strings['del_job']
+    database.set_user(event.chat_id, user)
+    await event.edit(text, buttons=None if keyboard==[] else keyboard, link_preview=False)
+
 async def main():
     await fb_auto.login(os.environ['COOKIES_FILE'])
 
