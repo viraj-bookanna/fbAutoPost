@@ -31,7 +31,10 @@ async def execute_job(job):
     if not fb_auto.logged_in:
         await fb_auto.login(os.environ['COOKIES_FILE'])
     for group in job['group_list']:
-        await fb_auto.sharePost(job['post_link'], group, job['share_text'])
+        try:
+            await fb_auto.sharePost(job['post_link'], group, job['share_text'])
+        except Exception as e:
+            print(f"Group {group['name']}\nError: {repr(e)}")
 def yesno(x,page,job_id):
     return [
         [Button.inline("Yes", '{{"page":"{}","press":"yes{}","id":{}}}'.format(page,x,job_id))],
