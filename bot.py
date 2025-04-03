@@ -1,4 +1,4 @@
-import os,logging,asyncio,pytz,json
+import os,logging,asyncio,pytz,json,threading
 from telethon import TelegramClient, events, Button
 from fbAuto import fbAutoFirefox
 from dotenv import load_dotenv
@@ -11,7 +11,6 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 TIMEZONE = pytz.timezone(os.getenv('TIMEZONE', 'Asia/Colombo'))
 bot = TelegramClient('bot', os.environ['API_ID'], os.environ['API_HASH']).start(bot_token=os.environ['BOT_TOKEN'])
-fb_auto = fbAutoFirefox()
 database = DB()
 USER_LIST = [] if os.getenv('USER_LIST') is None else os.environ['USER_LIST'].split(',')
 
@@ -23,18 +22,21 @@ async def wait_until_next_minute():
 async def cron():
     while True:
         await wait_until_next_minute()
-        print('executing cron', datetime.now(TIMEZONE).strftime('%H:%M'))
-        for job in database.get_jobs_for_current_minute():
-            print(job)
-            await execute_job(job)
-async def execute_job(job):
-    if not fb_auto.logged_in:
-        await fb_auto.login(os.environ['COOKIES_FILE'])
-    for group in job['group_list']:
-        try:
-            await fb_auto.sharePost(job['post_link'], group, job['share_text'])
-        except Exception as e:
-            print(f"Group {group['name']}\nError: {repr(e)}")
+        curr_min = datetime.now(TIMEZONE).strftime('%H:%M')
+        print('executing cron', curr_min)
+        jobs = [job for job in database.get_jobs_for_current_minute()]
+        if len(jobs) == 0:
+            continue
+        print(f"--------------- Jobs starting for {curr_min}")
+        await execute_jobs(jobs, curr_min)
+async def execute_jobs(jobs, curr_min):
+    fb_auto = fbAutoFirefox()
+    t = threading.Thread(target=fb_auto.shareToList, args=(jobs, os.environ['COOKIES_FILE']))
+    t.start()
+    while t.is_alive():
+        await asyncio.sleep(1)
+    fb_auto.close()
+    print(f"--------------- Jobs finished for {curr_min}")
 def yesno(x,page,job_id):
     return [
         [Button.inline("Yes", '{{"page":"{}","press":"yes{}","id":{}}}'.format(page,x,job_id))],
@@ -188,10 +190,6 @@ async def handler(event):
     database.set_user(event.chat_id, user)
     await event.edit(text, buttons=None if keyboard==[] else keyboard, link_preview=False)
 
-async def main():
-    await fb_auto.login(os.environ['COOKIES_FILE'])
-
 with bot:
-    bot.loop.run_until_complete(main())
     bot.loop.create_task(cron())
     bot.run_until_disconnected()
