@@ -1,3 +1,13 @@
+window.findAll = function(tag, attr, target=document){
+    return Array.from(target.getElementsByTagName(tag)).filter(function (item){
+        var keys = Object.keys(attr);
+        for(let i=0; i<keys.length; i++){
+            if(item.getAttribute(keys[i])==attr[keys[i]] || item[keys[i]]==attr[keys[i]]){
+                return true;
+            }
+        }
+    });
+}
 window.getDialogs = function(){
     return Array.from(document.getElementsByTagName('div')).filter(function (item){
         if(item.getAttribute('role')=='dialog'){

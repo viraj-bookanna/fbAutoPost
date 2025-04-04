@@ -1,4 +1,4 @@
-import pickle, time
+import pickle, time, traceback
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.firefox.options import Options
@@ -13,7 +13,8 @@ class fbAutoFirefox:
         prefs = {
             "dom.webnotifications.enabled": False,
             "extensions.enabledScopes": 0,
-            "general.useragent.override": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Gecko/20100101 Firefox/122.0"
+            "font.language.group": "unicode",
+            "intl.accept_languages": "si-LK,si,en-US,en",
         }
         profile = webdriver.FirefoxProfile()
         for key, value in prefs.items():
@@ -41,11 +42,23 @@ class fbAutoFirefox:
         return False
 
     def typeText(self, element, text):
+        def is_emoji(c):
+            return c in ('\U0001F600', '\U0001F64F') or '\U0001F300' <= c <= '\U0001F5FF' or '\U0001F680' <= c <= '\U0001F6FF' or '\U0001F700' <= c <= '\U0001F77F' or '\U0001F780' <= c <= '\U0001F7FF' or '\U0001F800' <= c <= '\U0001F8FF' or '\U0001F900' <= c <= '\U0001F9FF' or '\U0001FA00' <= c <= '\U0001FA6F' or '\U0001FA70' <= c <= '\U0001FAFF'
+        def send_emoji(emoji):
+            self.driver.execute_script('x=findAll("i",{"aria-label":"Emoji"});return x[x.length-1];').click()
+            time.sleep(1)
+            try:
+                self.driver.execute_script('x=findAll("div",{"aria-label":"Flags"});return x[x.length-1];').click()
+                time.sleep(1)
+                self.driver.execute_script('x=findAll("img",{alt:"'+emoji+'"});return x[x.length-1];').click()
+            except:
+                pass
+            self.driver.execute_script('x=findAll("div",{"aria-label":"Write something..."});return x[x.length-1];').click()
         for char in text.replace('\r', ''):
-            if char == '\n':
-                element.send_keys(Keys.RETURN)
-                continue
-            element.send_keys(char)
+            if is_emoji(char):
+                send_emoji(char)
+            else:
+                element.send_keys(char)
 
     def sharePost(self, post_link, group, share_text):
         status = False
@@ -72,7 +85,8 @@ class fbAutoFirefox:
                 try:
                     self.sharePost(job['post_link'], group, job['share_text'])
                 except Exception as e:
-                    print(f"Group {group['name']}\nError: {repr(e)}")
+                    with open("error.txt", "a") as f:
+                        f.write(f"Error: {traceback.format_exc()}\n")
 
     def close(self):
         self.driver.quit()
