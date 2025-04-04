@@ -16,7 +16,12 @@ USER_LIST = [] if os.getenv('USER_LIST') is None else os.environ['USER_LIST'].sp
 
 async def wait_until_next_minute():
     now = datetime.now(TIMEZONE)
-    next_minute = now.replace(hour=now.hour, minute=now.minute+1 if now.minute!=59 else 0, second=0, microsecond=0)
+    next_minute = now.replace(
+        hour=(now.hour + 1) % 24 if now.minute == 59 else now.hour,
+        minute=(now.minute + 1) % 60,
+        second=0,
+        microsecond=0
+    )
     seconds_to_next_minute = (next_minute-now).total_seconds()
     await asyncio.sleep(seconds_to_next_minute)
 async def cron():
