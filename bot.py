@@ -33,13 +33,10 @@ async def cron():
         if len(jobs) == 0:
             continue
         print(f"--------------- Jobs starting for {curr_min}")
-        await execute_jobs(jobs, curr_min)
+        asyncio.create_task(execute_jobs(jobs, curr_min))
 async def execute_jobs(jobs, curr_min):
     fb_auto = fbAutoFirefox()
-    t = threading.Thread(target=fb_auto.shareToList, args=(jobs, os.environ['COOKIES_FILE']))
-    t.start()
-    while t.is_alive():
-        await asyncio.sleep(1)
+    await asyncio.to_thread(fb_auto.shareToList, jobs, os.environ['COOKIES_FILE'])
     fb_auto.close()
     print(f"--------------- Jobs finished for {curr_min}")
 def yesno(x,page,job_id):
